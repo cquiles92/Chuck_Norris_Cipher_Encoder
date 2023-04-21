@@ -1,0 +1,212 @@
+type: edu
+files:
+- name: src/chucknorris/Main.java
+  visible: true
+  text: |-
+    package chucknorris;
+
+    public class Main {
+        public static void main(String[] args) {
+            System.out.println("Hello World!");
+        }
+    }
+  learner_created: false
+- name: test/ChuckNorrisTest.java
+  visible: false
+  text: |-
+    import org.assertj.swing.util.Pair;
+    import org.hyperskill.hstest.dynamic.DynamicTest;
+    import org.hyperskill.hstest.stage.StageTest;
+    import org.hyperskill.hstest.testcase.CheckResult;
+    import org.hyperskill.hstest.testing.TestedProgram;
+
+    import java.util.ArrayList;
+    import java.util.Arrays;
+    import java.util.List;
+
+    public class ChuckNorrisTest extends StageTest {
+      class Case{
+        String input;
+        String result;
+        String invert;
+        Case(String input, String result, String invert){
+          this.input=input;
+          this.result=result;
+          this.invert=invert;
+        }
+      }
+      Object[] test_data(){
+        String ascii = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+        List<String> list = new ArrayList<>(Arrays.asList(ascii.split("")));
+        list.addAll(Arrays.asList("greetings!",
+                "hello world!",
+                ascii));
+        List<Case> r = new ArrayList<>();
+        for(String s : list){
+          String code = "";
+          String result_inv = "";
+          for (int i=0;i<s.length();i++){
+            String result = Integer.toBinaryString(s.charAt(i));
+            String resultWithPadding = String.format("%7s", result).replaceAll(" ","0");
+            code = code.concat(resultWithPadding);
+          }
+          for(int i=0;i<code.length()/7;i++){
+            String tmp = code.substring(i*7,(i+1)*7).replace('0', '2').replace('1', '0').replace('2', '1');
+            char c =  (char)Integer.parseInt(tmp,2);
+            result_inv = result_inv.concat(String.valueOf(c));
+          }
+          String result="";
+          char x=code.charAt(0);
+          int start=0;
+          for(int i=1;i<code.length();i++){
+            if(code.charAt(i)!=x){
+              result = result.concat(x=='1'?"0 ":"00 ").concat("0".repeat(i-start)+" ");
+              x=code.charAt(i);
+              start=i;
+            }
+          }
+          result = result.concat(x=='1'?"0 ":"00 ").concat("0".repeat(code.length()-start)+" ");
+
+          r.add(new Case(result,s,result_inv));
+        }
+        return r.toArray();
+      }
+
+      @DynamicTest(data = "test_data")
+      CheckResult test(Case input_case) {
+        TestedProgram pr = new TestedProgram();
+        String output = pr.start().strip().toLowerCase();
+        List<String> list = new ArrayList<>(Arrays.asList(output.split("\n")));
+        list.removeAll(Arrays.asList(""));
+
+        if(list.size()!=1 || !list.get(0).contains("input")){
+          return CheckResult.wrong("When the program just started, output should contain exactly 1 non-empty line, " +
+                  "containing \"input\" substring as it shown in the example, followed by an input");
+        }
+        output = pr.execute(input_case.input);
+        list = new ArrayList<>(Arrays.asList(output.split("\n")));
+        list.removeAll(Arrays.asList(""));
+        if(list.size()!=2){
+          return CheckResult.wrong("When the user has entered a string, there should be printed exactly 2 " +
+                  "non-empty lines");
+        }
+        if(!list.get(0).toLowerCase().contains("result")){
+          return CheckResult.wrong("When the user has entered a string, the first line of the output " +
+                  "should contain \"result\" substring");
+        }
+        if(list.get(1).equals(input_case.invert)){
+          return CheckResult.wrong("Input string was not decoded correctly, in this case the reason might be that you've " +
+                  "decoded '0' sequence with first block \"0\" and '1' sequence with first block \"00\", so the decoded " +
+                  "string is \"inverted\"");
+        }
+        if(!list.get(1).equals(input_case.result)){
+          return CheckResult.wrong("Input string was not decoded correctly.");
+        }
+
+        return CheckResult.correct();
+      }
+    }
+  learner_created: false
+- name: src/chucknorris/EncoderProcessor.java
+  visible: true
+  text: |
+    package chucknorris;
+
+    import java.util.Scanner;
+
+    public class EncoderProcessor {
+        private final Scanner scanner;
+
+        public EncoderProcessor(Scanner scanner) {
+            this.scanner = scanner;
+        }
+
+        public void run() {
+            String input = getInput();
+            printOutput(input);
+        }
+
+        public String getInput() {
+            System.out.println("Input string:");
+            return scanner.nextLine();
+        }
+
+
+        private void printOutput(String output) {
+            System.out.println("\nThe result:");
+
+            if (output.length() == 0) {
+                System.out.println();
+                return;
+            }
+
+            //convert string into binary
+            //convert binary into unary
+
+            String binaryString = stringToBinary(output);
+            String unaryString = binaryToUnary(binaryString);
+
+            System.out.println(unaryString);
+
+        }
+
+        //take output string and convert into char array
+        //for every letter in char array convert that into binary
+        private String stringToBinary(String input) {
+            StringBuilder builder = new StringBuilder();
+            char[] charArray = input.toCharArray();
+
+            for (char c : charArray) {
+                String binary = charToBinary(c);
+                builder.append(binary);
+            }
+
+            return builder.toString();
+        }
+
+        //helper method
+        private String charToBinary(char c) {
+            StringBuilder stringBuilder = new StringBuilder();
+            String conversion = Integer.toBinaryString(c);
+
+            stringBuilder.append("0".repeat(Math.max(0, 7 - conversion.length())));
+
+            stringBuilder.append(conversion);
+            return stringBuilder.toString();
+        }
+
+
+        private String binaryToUnary(String input) {
+            StringBuilder builder = new StringBuilder();
+
+            //initialize the string with prefix and minimum 1 char
+            appendPrefix(builder, input.charAt(0));
+            builder.append("0");
+
+            for (int i = 1; i < input.length(); i++) {
+                if (input.charAt(i - 1) != input.charAt(i)) {
+                    builder.append(" ");
+                    appendPrefix(builder, input.charAt(i));
+                }
+                builder.append("0");
+            }
+
+            return builder.toString();
+        }
+
+        //helper method
+        private void appendPrefix(StringBuilder builder, char prefix) {
+            if (prefix == '1') {
+                builder.append("0 ");
+            } else {
+                builder.append("00 ");
+            }
+        }
+    }
+  learner_created: true
+feedback_link: https://hyperskill.org/learn/step/23027#comment
+status: Solved
+feedback:
+  message: Congratulations!
+  time: "Tue, 28 Feb 2023 04:17:35 UTC"
+record: 4
